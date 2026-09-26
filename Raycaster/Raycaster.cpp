@@ -1,8 +1,25 @@
 #include <SDL.h>
+#include <cmath>
+#include <iostream>
 
+struct Vector2 {
+    float x = 0.0f;
+    float y = 0.0f;
+
+    float length() const{ 
+        return std::sqrt((x * x) + (y * y)); }
+    
+    Vector2 normalized() const{
+        float len = length();
+        
+        if (len > 0.0f) {
+            return Vector2{ x / len, y / len };
+        }
+        return Vector2{ 0.0f, 0.0f };
+    }
+};
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
-
     // Explicitly naming window dimensions to use for boundary math
     const int WINDOW_WIDTH = 1000;
     const int WINDOW_HEIGHT = 800;
@@ -49,10 +66,19 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        if (up)    player.y -= moveSpeed * deltaTime;
-        if (down)  player.y += moveSpeed * deltaTime;
-        if (left)  player.x -= moveSpeed * deltaTime;
-        if (right) player.x += moveSpeed * deltaTime;
+        // --- MOVEMENT LOGIC ---
+        Vector2 inputDir{ 0.0f, 0.0f };
+        if (up)    inputDir.y -= 1.0f;
+        if (down)  inputDir.y += 1.0f;
+        if (right) inputDir.x += 1.0f;
+        if (left)  inputDir.x -= 1.0f;
+
+        // Normalize to keep diagonal speed identical to orthogonal
+        Vector2 moveDirection = inputDir.normalized();
+
+        // Move player using the synchornized movement vector
+        player.x += moveDirection.x * moveSpeed * deltaTime;
+        player.y += moveDirection.y * moveSpeed * deltaTime;
 
         // --- NEW BOUNDARY CHECKING CODE ---
         if (player.x < 0.0f) {
@@ -78,6 +104,7 @@ int main(int argc, char* argv[]) {
         SDL_RenderPresent(renderer);
     }
 
+    // Cleanup
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
