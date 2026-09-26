@@ -1,6 +1,10 @@
 #include <SDL.h>
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+
 
 struct Vector2 {
     float x = 0.0f;
@@ -18,7 +22,34 @@ struct Vector2 {
         return Vector2{ 0.0f, 0.0f };
     }
 };
+
 int main(int argc, char* argv[]) {
+    std::ifstream mapFile("map.txt");
+
+    if (!mapFile.is_open()) {
+        std::cerr << "Could not open map.txt\n";
+        return 1;
+    }
+    std::vector<std::string> map;
+    std::string row;
+
+    while (std::getline(mapFile, row)) {
+        map.push_back(row);
+    }
+
+    if (map.empty()) {
+        std::cerr << "Map is empty\n";
+        return 1;
+    }
+
+    for (const std::string& mapRow : map) {
+        std::cout << mapRow << '\n';
+        if (mapRow.size() != map[0].size()) {
+            std::cerr << "Error.\n";
+            return 1;
+        }
+    }
+
     SDL_Init(SDL_INIT_VIDEO);
     // Explicitly naming window dimensions to use for boundary math
     const int WINDOW_WIDTH = 1000;
