@@ -4,24 +4,9 @@
 #include <fstream>
 #include <vector>
 #include <string>
-
-
-struct Vector2 {
-    float x = 0.0f;
-    float y = 0.0f;
-
-    float length() const{ 
-        return std::sqrt((x * x) + (y * y)); }
-    
-    Vector2 normalized() const{ 
-        float len = length();
-        
-        if (len > 0.0f) {
-            return Vector2{ x / len, y / len };
-        }
-        return Vector2{ 0.0f, 0.0f };
-    }
-};
+#include <algorithm>
+#include "Collision.h"
+#include "Vector2.h"
 
 int main(int argc, char* argv[]) {
     std::ifstream mapFile("map.txt");
@@ -67,7 +52,6 @@ int main(int argc, char* argv[]) {
     Uint64 lastTime = SDL_GetPerformanceCounter();
     float deltaTime = 0.0f;
 
-    bool up = false, down = false, left = false, right = false;
     bool running = true;
     SDL_Event event;
 
@@ -80,25 +64,24 @@ int main(int argc, char* argv[]) {
             if (event.type == SDL_QUIT) {
                 running = false;
             }
-            else if (event.type == SDL_KEYDOWN) {
-                switch (event.key.keysym.sym) {
-                case SDLK_ESCAPE: running = false; break;
-                case SDLK_w:     up = true;     break;
-                case SDLK_s:     down = true;   break;
-                case SDLK_a:     left = true;   break;
-                case SDLK_d:     right = true;  break;
-                }
-            }
-            else if (event.type == SDL_KEYUP) {
-                switch (event.key.keysym.sym) {
-                case SDLK_w:     up = false;    break;
-                case SDLK_s:     down = false;  break;
-                case SDLK_a:     left = false;  break;
-                case SDLK_d:     right = false; break;
-                }
+            else if (event.type == SDL_KEYDOWN &&
+                event.key.keysym.sym == SDLK_ESCAPE) {
+                running = false;
             }
         }
         const Uint8* keyboard = SDL_GetKeyboardState(nullptr); // gives keyboard state
+
+        bool up = keyboard[SDL_SCANCODE_W]
+            || keyboard[SDL_SCANCODE_UP];
+
+        bool down = keyboard[SDL_SCANCODE_S]
+            || keyboard[SDL_SCANCODE_DOWN];
+
+        bool left = keyboard[SDL_SCANCODE_A]
+            || keyboard[SDL_SCANCODE_LEFT];
+
+        bool right = keyboard[SDL_SCANCODE_D]
+            || keyboard[SDL_SCANCODE_RIGHT];
 
         bool walking = keyboard[SDL_SCANCODE_LSHIFT]
             || keyboard[SDL_SCANCODE_RSHIFT]; // checks if either shift is held
@@ -115,24 +98,10 @@ int main(int argc, char* argv[]) {
         // Normalize to keep diagonal speed identical to orthogonal
         Vector2 moveDirection = inputDir.normalized();
 
-        // Move player using the synchornized movement vector
-        player.x += moveDirection.x * currentSpeed * deltaTime;
-        player.y += moveDirection.y * currentSpeed * deltaTime;
+        float movementX = moveDirection.x * currentSpeed * deltaTime;
+        float movementY = moveDirection.y * currentSpeed * deltaTime;
 
-        // --- NEW BOUNDARY CHECKING CODE ---
-        if (player.x < 0.0f) {
-            player.x = 0.0f;
-        }
-        if (player.x + player.w > (float)WINDOW_WIDTH) {
-            player.x = (float)WINDOW_WIDTH - player.w;
-        }
-        if (player.y < 0.0f) {
-            player.y = 0.0f;
-        }
-        if (player.y + player.h > (float)WINDOW_HEIGHT) {
-            player.y = (float)WINDOW_HEIGHT - player.h;
-        }
-        // ----------------------------------
+        moveWithCollision(player, map, movementX, movementY, TILE_SIZE);
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
