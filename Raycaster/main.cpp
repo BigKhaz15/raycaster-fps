@@ -151,50 +151,94 @@ int main(int argc, char* argv[]) {
 
         moveWithCollision(player, map, movementX, movementY, TILE_SIZE);
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        // Draw the ceiling.
+        SDL_SetRenderDrawColor(renderer, 35, 40, 50, 255);
         SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
 
-        for (int y = 0; y < static_cast<int>(map.size()); ++y) {
-            for (int x = 0; x < static_cast<int>(map[y].size()); ++x) {
-                if (map[y][x] == '1') {
-                    SDL_Rect wall = {
-                        x * TILE_SIZE,
-                        y * TILE_SIZE,
-                        TILE_SIZE,
-                        TILE_SIZE
-                    };
+        // Draw the floor across the bottom half.
+        SDL_Rect floorArea{
+            0,
+            WINDOW_HEIGHT / 2,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT - WINDOW_HEIGHT / 2
+        };
 
-                    // Fill the tile gray
-                    SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255);
-                    SDL_RenderFillRect(renderer, &wall);
+        SDL_SetRenderDrawColor(renderer, 65, 60, 55, 255);
+        SDL_RenderFillRect(renderer, &floorArea);
 
-                    // Outline the tile in black
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    SDL_RenderDrawRect(renderer, &wall);
-                }
-            }
-        }
-
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderFillRectF(renderer, &player);
-
+        // Camera position and field of view.
         Vector2 rayOrigin{
             player.x + player.w / 2.0f,
             player.y + player.h / 2.0f
         };
 
-        RayHit wallHit = castRay(map, rayOrigin, facingDirection, TILE_SIZE);
+        const float fieldOfView = 1.04719755f;
+        float halfViewWidth = std::tan(fieldOfView / 2.0f);
 
-        if (wallHit.hit) {
-            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        Vector2 cameraRight{
+            -facingDirection.y,
+            facingDirection.x
+        };
 
-            SDL_RenderDrawLineF(
+        // Controls the projection scale in screen pixels.
+        float projectionDistance = (WINDOW_WIDTH / 2.0f) / halfViewWidth;
+        float wallHeight = static_cast<float>(TILE_SIZE);
+
+        // Cast one ray per screen column.
+        for (int screenX = 0; screenX < WINDOW_WIDTH; ++screenX) {
+            float viewPosition =
+                2.0f * (screenX + 0.5f) / WINDOW_WIDTH - 1.0f;
+
+            Vector2 rayDir{
+                facingDirection.x + cameraRight.x * viewPosition * halfViewWidth,
+                facingDirection.y + cameraRight.y * viewPosition * halfViewWidth
+            };
+
+            rayDir = rayDir.normalized();
+
+            RayHit wallHit = castRay(map, rayOrigin, rayDir, TILE_SIZE);
+
+            if (!wallHit.hit) {
+                continue;
+            }
+
+            // Convert distance along the ray into depth straight ahead.
+            float alignment =
+                rayDir.x * facingDirection.x +
+                rayDir.y * facingDirection.y;
+
+            float depth = wallHit.distance * alignment;
+
+            if (depth < 0.01f) {
+                depth = 0.01f;
+            }
+
+            // Project the wall's world height onto the screen.
+            float sliceHeight = wallHeight * projectionDistance / depth;
+
+            float drawTop = WINDOW_HEIGHT / 2.0f - sliceHeight / 2.0f;
+            float drawBottom = WINDOW_HEIGHT / 2.0f + sliceHeight / 2.0f;
+
+            if (drawTop < 0.0f) {
+                drawTop = 0.0f;
+            }
+
+            if (drawBottom > WINDOW_HEIGHT - 1.0f) {
+                drawBottom = WINDOW_HEIGHT - 1.0f;
+            }
+
+            // Simple distance shading.
+            float brightness = 1.0f / (1.0f + depth / 500.0f);
+            Uint8 shade = static_cast<Uint8>(220.0f * brightness);
+
+            SDL_SetRenderDrawColor(renderer, shade, shade, shade, 255);
+
+            SDL_RenderDrawLine(
                 renderer,
-                rayOrigin.x,
-                rayOrigin.y,
-                rayOrigin.x + facingDirection.x * wallHit.distance,
-                rayOrigin.y + facingDirection.y * wallHit.distance
+                screenX,
+                static_cast<int>(drawTop),
+                screenX,
+                static_cast<int>(drawBottom)
             );
         }
 
