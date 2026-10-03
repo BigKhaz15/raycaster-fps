@@ -7,7 +7,8 @@ RayHit castRay(
     Vector2 origin,
     Vector2 rayDir,
     int tileSize
-) {
+)
+{
     if (rayDir.x == 0.0f && rayDir.y == 0.0f) {
         return {};
     }

@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
         SDL_RenderFillRect(renderer, &floorArea);
 
         // Camera position and field of view.
-        Vector2 rayOrigin{
+        Vector2 cameraPosition{
             player.x + player.w / 2.0f,
             player.y + player.h / 2.0f
         };
@@ -175,10 +175,7 @@ int main(int argc, char* argv[]) {
         const float fieldOfView = 1.04719755f;
         float halfViewWidth = std::tan(fieldOfView / 2.0f);
 
-        Vector2 cameraRight{
-            -facingDirection.y,
-            facingDirection.x
-        };
+        Vector2 cameraRight = rightDirection;
 
         // Controls the projection scale in screen pixels.
         float projectionDistance = (WINDOW_WIDTH / 2.0f) / halfViewWidth;
@@ -188,7 +185,7 @@ int main(int argc, char* argv[]) {
         for (int screenX = 0; screenX < WINDOW_WIDTH; ++screenX) {
             float viewPosition =
                 2.0f * (screenX + 0.5f) / WINDOW_WIDTH - 1.0f;
-
+           
             Vector2 rayDir{
                 facingDirection.x + cameraRight.x * viewPosition * halfViewWidth,
                 facingDirection.y + cameraRight.y * viewPosition * halfViewWidth
@@ -196,7 +193,7 @@ int main(int argc, char* argv[]) {
 
             rayDir = rayDir.normalized();
 
-            RayHit wallHit = castRay(map, rayOrigin, rayDir, TILE_SIZE);
+            RayHit wallHit = castRay(map, cameraPosition, rayDir, TILE_SIZE);
 
             if (!wallHit.hit) {
                 continue;
